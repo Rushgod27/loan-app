@@ -260,6 +260,57 @@ td{
 }
 
 
+.refresh-btn{
+  font-size:22px;
+  cursor:pointer;
+  padding:6px;
+  border-radius:50%;
+  transition:0.2s;
+}
+
+.refresh-btn:active{
+  transform:scale(0.9);
+}
+
+.refresh-btn.loading{
+  animation:spin 1s linear infinite;
+  opacity:0.6;
+  pointer-events:none;
+}
+
+@keyframes spin{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
+
+.refresh-btn{
+  font-size:22px;
+  cursor:pointer;
+  padding:6px;
+  border-radius:50%;
+  transition:0.2s;
+}
+
+.refresh-btn.loading{
+  animation:spin 1s linear infinite;
+  opacity:0.6;
+  pointer-events:none;
+}
+
+@keyframes spin{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
+
+.pull-indicator{
+  text-align:center;
+  font-size:13px;
+  color:#6b7280;
+  height:0;
+  overflow:hidden;
+  transition:0.2s;
+}
+
 </style>
 </head>
 
@@ -273,7 +324,22 @@ td{
 
 <div id="dashboardSection">
 
-<div class="section-title">Overview</div>
+<div id="pullIndicator" class="pull-indicator">
+  Release to refresh
+</div>
+
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+  <div class="section-title" style="margin:0;">Overview</div>
+  <div id="refreshBtn" class="refresh-btn" onclick="refreshDashboard()">
+    ⟳
+  </div>
+</div>
+
+<div id="lastUpdated" style="font-size:12px;color:#6b7280;margin-bottom:12px;">
+  Last updated: --
+</div>
+
 <div class="grid">
   <div class="card" id="totalMembersCard"></div>
   <div class="card" id="activeBorrowersCard"></div>
@@ -811,6 +877,74 @@ window.toggleCreateLoan = function(){
 /* LOAD ON START */
 loadDashboard();
 
+let isRefreshing = false;
+
+window.refreshDashboard = async function(){
+
+  if(isRefreshing) return;
+
+  isRefreshing = true;
+
+  const btn = document.getElementById("refreshBtn");
+  btn.classList.add("loading");
+
+  await loadDashboard();
+
+  btn.classList.remove("loading");
+
+  document.getElementById("lastUpdated").innerText =
+    "Last updated: " + new Date().toLocaleTimeString();
+
+  if(navigator.vibrate){
+    navigator.vibrate(30);
+  }
+
+  isRefreshing = false;
+};
+
+setInterval(()=>{
+  if(document.getElementById("dashboardSection")
+      .classList.contains("hidden")) return;
+
+  refreshDashboard();
+}, 30000);
+
+let touchStartY = 0;
+let pullDistance = 0;
+
+window.addEventListener("touchstart", function(e){
+  if(window.scrollY === 0){
+    touchStartY = e.touches[0].clientY;
+  }
+});
+
+window.addEventListener("touchmove", function(e){
+
+  if(window.scrollY !== 0) return;
+
+  pullDistance = e.touches[0].clientY - touchStartY;
+
+  const indicator = document.getElementById("pullIndicator");
+
+  if(pullDistance > 80){
+    indicator.style.height = "30px";
+    indicator.innerText = "Release to refresh";
+  }
+});
+
+window.addEventListener("touchend", function(){
+
+  const indicator = document.getElementById("pullIndicator");
+
+  if(pullDistance > 80){
+    refreshDashboard();
+  }
+
+  pullDistance = 0;
+  indicator.style.height = "0px";
+});
+
+
 </script>
 
 <script>
@@ -826,6 +960,9 @@ if ("serviceWorker" in navigator) {
       });
   });
 }
+
+
+
 </script>
 </body>
 </html>
